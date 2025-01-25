@@ -77,4 +77,7 @@ CREATE TABLE user_center (
     FOREIGN KEY (u_id) REFERENCES user_category(u_id)
 );
 
-
+--------------------------------------------------------------------------------25125
+ALTER TABLE states
+ADD COLUMN volunteer_name VARCHAR(100) NOT NULL AFTER name,
+ADD COLUMN phone_no VARCHAR(15) NOT NULL;

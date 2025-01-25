@@ -359,6 +359,112 @@ END$$
 DELIMITER ;
 
 
+-------------------------------------------------------------------------25125
+DELIMITER //
 
+CREATE PROCEDURE AddStateAdmin(
+    IN email VARCHAR(255),
+    IN roleId INT,
+    IN stateId INT,
+    IN plainPassword VARCHAR(255)
+)
+BEGIN
+    DECLARE generatedUserId VARCHAR(16);
+    DECLARE salt VARCHAR(255);
+    DECLARE hashedPassword VARCHAR(255);
 
+    -- Generate a random 16-character user_id
+    SET generatedUserId = CONCAT(
+        LEFT(UUID(), 8), -- First 8 characters of a UUID
+        LEFT(UUID(), 8)  -- Another 8 characters of a new UUID
+    );
+
+    -- Generate a unique salt
+    SET salt = UUID();
+
+    -- Hash the password with the salt
+    SET hashedPassword = SHA2(CONCAT(plainPassword, salt), 256);
+
+    -- Insert into the users table
+    INSERT INTO users (user_id, email, role_id, state_id)
+    VALUES (generatedUserId, email, roleId, stateId);
+
+    -- Insert the password into the passwords table
+    INSERT INTO passwords (user_id, password, salt)
+    VALUES (generatedUserId, hashedPassword, salt);
+
+    -- Return the generated user ID
+    SELECT generatedUserId AS user_id;
+END //
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE ViewStateDetails(IN p_state_id INT)
+BEGIN
+    SELECT 
+        s.name AS state_name,
+        s.volunteer_name,
+        s.phone_no,
+        u.email AS admin_email
+    FROM states s
+    LEFT JOIN users u ON s.state_id = u.state_id
+    WHERE s.state_id = p_state_id AND u.role_id = 2; -- Filtering by state_id and role_id
+END $$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE EditStateDetails(
+    IN p_state_id INT,
+    IN p_state_name VARCHAR(100),
+    IN p_volunteer_name VARCHAR(100),
+    IN p_phone_no VARCHAR(15),
+    IN p_email VARCHAR(255)
+)
+BEGIN
+    -- Update state details
+    UPDATE states
+    SET 
+        name = IFNULL(p_state_name, name),
+        volunteer_name = IFNULL(p_volunteer_name, volunteer_name),
+        phone_no = IFNULL(p_phone_no, phone_no)
+    WHERE state_id = p_state_id;
+
+    -- Update email in the users table
+    UPDATE users
+    SET email = IFNULL(p_email, email)
+    WHERE state_id = p_state_id AND role_id = 2; -- Assuming role_id 2 is for State Admin
+END $$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE ResetPassword(
+    IN p_user_id VARCHAR(16),
+    OUT p_new_password VARCHAR(255)
+)
+BEGIN
+    DECLARE salt VARCHAR(255);
+    DECLARE hashed_password VARCHAR(255);
+
+    -- Generate a new random password
+    SET p_new_password = LEFT(UUID(), 8);
+
+    -- Generate a unique salt
+    SET salt = UUID();
+
+    -- Hash the new password with the salt
+    SET hashed_password = SHA2(CONCAT(p_new_password, salt), 256);
+
+    -- Update the passwords table
+    UPDATE passwords
+    SET password = hashed_password, salt = salt
+    WHERE user_id = p_user_id;
+END $$
+
+DELIMITER ;
 
